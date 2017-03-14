@@ -16,7 +16,7 @@ var Req = {
 		} else {
 			type = 'GET';
 		}
-	
+
 		if (!data) data = {};
 		if (!isJSON) isJSON = false;
 		return new Promise((resolve, reject) => {
@@ -53,7 +53,7 @@ var Req = {
 Function.prototype.clone = function() {
     var c = this;
     if(this.__isClone) {c = this.__clonedFrom;}
-    var t = function() { return cloneObj.apply(this, arguments); };
+    var t = function() { return c.apply(this, arguments); };
     for(var key in this) {t[key] = this[key];}
     t.__isClone = true;
     t.__clonedFrom = c;
@@ -71,41 +71,59 @@ if (window.onload !== null || window.onload !== undefined) {
 }
 
 var PopupButton = function (text) {
-	this.buttonText = text || "Click Me";
+	this.buttonText = text || 'Click Me';
 	this.container = null;
+	this.socket = null;
 }
 
 PopupButton.prototype = {
 	setup: function() {
-		let button_css = ".magic_button { position: absolute; right: 100px; bottom: 100px; } .magic_button button { position: absolute; right: 0px; bottom: 0px; } .popup_hidden { display: none; }";
 		let body = document.querySelector('body');
+		let head = document.querySelector('head');
+		
+		this.createButton('magic_button');
+		this.styleButton(body, 'magic_button');
+		body.appendChild(this.container);
+
+		let script = document.createElement('script');
+		script.setAttribute('src', 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js');
+		head.appendChild(script);
+
+		this.setupSocket();
+	},
+	setupSocket: function() {
+		setTimeout(() => {
+			if (window.hasOwnProperty('io')) {
+				this.socket = io();
+				console.debug("got socket", this.socket);
+			} else {
+				this.setupSocket();
+				console.debug("calling again");
+			}
+		}, 50);
+	},
+	createButton: function(class_name) {
 		this.container = document.createElement('div');
+		this.container.setAttribute('class', class_name);
 		let button = document.createElement('button');
-		let style = document.createElement('style');
 
 		button.innerHTML = this.buttonText;
-
 		button.onclick = this.toggle.bind(this);
-
-		this.container.setAttribute('class', 'magic_button');
-
+		this.container.appendChild(button);
+	},
+	styleButton: function(element, class_name) {
+		let button_css = '.' + class_name + ' { position: absolute; right: 100px; bottom: 100px; } .magic_button button { position: absolute; right: 0px; bottom: 0px; } .popup_hidden { display: none; }';
+		let style = document.createElement('style');
 		style.type = 'text/css';
 		if (style.styleSheet){
 		  style.styleSheet.cssText = button_css;
 		} else {
 		  style.appendChild(document.createTextNode(button_css));
 		}
-
-		this.container.appendChild(button);
-
-		body.appendChild(this.container);
-		body.appendChild(style);
-	},
-	createButton: function() {
-	
+		element.appendChild(style);
 	},
 	toggle: function() {
-		var popup = this.container.querySelector('#popup_window') // Get the div 
+		var popup = this.container.querySelector('#popup_window') // Get the div
 
 		if (!popup) {
 			Req.get('popup.html', null, null)
