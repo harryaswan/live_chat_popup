@@ -74,13 +74,16 @@ var PopupButton = function (text) {
 	this.buttonText = text || 'Click Me';
 	this.container = null;
 	this.socket = null;
+	this.inputText = '';
+	this.message_list = null;
+	this.user_id = Math.floor(Math.random() * 1000);
 }
 
 PopupButton.prototype = {
 	setup: function() {
 		let body = document.querySelector('body');
 		let head = document.querySelector('head');
-		
+
 		this.createButton('magic_button');
 		this.styleButton(body, 'magic_button');
 		body.appendChild(this.container);
@@ -89,18 +92,27 @@ PopupButton.prototype = {
 		script.setAttribute('src', 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js');
 		head.appendChild(script);
 
-		this.setupSocket();
+		this.getSocket();
 	},
-	setupSocket: function() {
+	getSocket: function() {
 		setTimeout(() => {
 			if (window.hasOwnProperty('io')) {
 				this.socket = io();
-				console.debug("got socket", this.socket);
+				this.setupSocket();
 			} else {
 				this.setupSocket();
 				console.debug("calling again");
 			}
 		}, 50);
+	},
+	setupSocket: function() {
+		this.socket.on('chat_message', (msg) => {
+			if (this.message_list && msg.user_id !== this.user_id) {
+				let li = document.createElement('li');
+				li.innerText = msg.user_id + ': ' + msg.msg;
+				this.message_list.appendChild(li);
+			}
+		});
 	},
 	createButton: function(class_name) {
 		this.container = document.createElement('div');
@@ -112,7 +124,7 @@ PopupButton.prototype = {
 		this.container.appendChild(button);
 	},
 	styleButton: function(element, class_name) {
-		let button_css = '.' + class_name + ' { position: absolute; right: 100px; bottom: 100px; } .magic_button button { position: absolute; right: 0px; bottom: 0px; } .popup_hidden { display: none; }';
+		let button_css = '.' + class_name + ' { position: absolute; right: 100px; bottom: 100px; } .' + class_name + ' button { position: absolute; right: 0px; bottom: 0px; } .'+class_name+' .message_container { height: 150px; width: 130px; background: #47c266; } .popup_hidden { display: none; } . ';
 		let style = document.createElement('style');
 		style.type = 'text/css';
 		if (style.styleSheet){
@@ -132,6 +144,26 @@ PopupButton.prototype = {
 				h.setAttribute('id', 'popup_window');
 				h.innerHTML = html;
 				this.container.insertBefore(h, this.container.childNodes[0]);
+				let form = h.querySelector('#message_box');
+				this.message_list = h.querySelector('.message_container ul');
+				let input = h.querySelector('#message_box input');
+				form.onsubmit = (e, vals) => {
+					e.preventDefault();
+					let li = document.createElement('li');
+					li.innerText = 'M: ' + this.inputText;
+					if (this.socket) {
+						this.socket.emit('chat_message', {user_id: this.user_id, msg: this.inputText});
+						this.message_list.appendChild(li);
+						input.value = '';
+					} else {
+						console.error('No connection');
+					}
+				}
+
+				input.onchange = () => {
+					this.inputText = input.value;
+				}
+
 			})
 			.catch(console.warning);
 		} else {
